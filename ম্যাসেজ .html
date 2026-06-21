@@ -1,0 +1,67 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>অফলাইন মেসেঞ্জার</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        #messages { flex: 1; overflow-y: scroll; padding: 10px; border-bottom: 1px solid #ccc; }
+        #input-area { padding: 10px; display: flex; }
+        input { flex: 1; padding: 10px; }
+        button { padding: 10px; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="messages"></div>
+<div id="input-area">
+    <input type="text" id="msgInput" placeholder="মেসেজ লিখুন...">
+    <button onclick="sendMessage()">পাঠান</button>
+</div>
+
+<script>
+    // WebRTC কনফিগারেশন
+    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    let peer = new RTCPeerConnection(config);
+    let dataChannel;
+
+    // ডেটা চ্যানেল তৈরি (হোস্টের জন্য)
+    function createConnection() {
+        dataChannel = peer.createDataChannel("chat");
+        setupChannel();
+        peer.createOffer().then(offer => peer.setLocalDescription(offer));
+    }
+
+    // মেসেজ পাঠানো
+    function sendMessage() {
+        const msg = document.getElementById('msgInput').value;
+        if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(msg);
+            document.getElementById('messages').innerHTML += `<p><b>আমি:</b> ${msg}</p>`;
+            document.getElementById('msgInput').value = '';
+        }
+    }
+
+    // কানেকশন হ্যান্ডেল করা
+    function setupChannel() {
+        dataChannel.onmessage = (e) => {
+            document.getElementById('messages').innerHTML += `<p><b>অন্য ফোন:</b> ${e.data}</p>`;
+        };
+    }
+
+    peer.ondatachannel = (e) => {
+        dataChannel = e.channel;
+        setupChannel();
+    };
+
+    // আইস ক্যান্ডিডেট (কানেকশনের জন্য প্রয়োজন)
+    peer.onicecandidate = (e) => {
+        if (e.candidate) console.log("SDP:", JSON.stringify(peer.localDescription));
+    };
+
+    // প্রাথমিক শুরু
+    createConnection();
+</script>
+
+</body>
+</html>
